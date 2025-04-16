@@ -13,3 +13,9 @@ def ensure_directories():
     
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
+
+
+if __name__ == "__main__":
+    print("Setting up BizBrain directory structure...")
+    ensure_directories()
+    print("Directory setup complete!")
