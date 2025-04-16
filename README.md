@@ -2,80 +2,6 @@
 
 A Python-based Q&A system for analyzing legal documents and contracts.
 
-## Directory Structure
-
-- `/raw_documents/` - Original, unprocessed legal documents (contracts, agreements, etc.)
-- `/processed_documents/` - Processed document data
-  - `/full_text/` - Cleaned and extracted complete text of documents before chunking
-  - `/chunks/` - Contains JSON files with chunked text from documents
-  - `document_index.json` - Master index of all documents with metadata
-  - `document_registry.json` - Tracks processing status of documents
-- `/vector_store/` - Storage for vector embeddings
-  - `faiss.index` - The vector database (created during processing)
-  - `document_to_id_map.json` - Maps between vector IDs and document chunks
-- `/conversation_history/` - Records of Q&A interactions with the system
-- `/logs/` - System logs for debugging and monitoring
-- `/src/` - Python source code
-  - `/processors/` - Document processing scripts
-  - `/indexers/` - Vector storage and indexing scripts
-  - `/retrievers/` - Query and retrieval scripts
-  - `/reasoners/` - LLM integration and answer generation
-  - `/interface/` - API and UI implementation
-
-## System Architecture
-
-BizBrain is organized into five distinct layers:
-
-1. **Document Processing Layer**
-   - Loads documents from various formats
-   - Extracts and cleans text
-   - Chunks documents into manageable segments
-   - Extracts metadata for citation tracking
-
-2. **Storage & Indexing Layer**
-   - Creates vector embeddings for text chunks
-   - Manages the vector database
-   - Stores document metadata
-   - Maps between chunks and source documents
-
-3. **Retrieval Layer**
-   - Processes user queries
-   - Performs hybrid retrieval (semantic + keyword)
-   - Re-ranks results for relevance
-   - Connects related information across documents
-
-4. **Reasoning Layer**
-   - Assembles context from retrieved chunks
-   - Integrates with LLM for reasoning
-   - Generates answers with citations
-   - Tracks sources for verification
-
-5. **Interface Layer**
-   - Provides API for internal integration
-   - Implements simple user interface
-   - Collects feedback for improvement
-   - Logs interactions for analysis
-
-## System Overview
-
-BizBrain processes legal documents into searchable chunks, creates vector embeddings, and uses LangChain with an LLM to answer questions about the documents. The system maintains citations to source documents for verification.
-
-## Key Features
-
-- Cross-document reasoning for complex questions
-- Source citations for all answers
-- Focus on accuracy over speed
-- Designed for internal business use
-
-## Technology
-
-- Python
-- LangChain
-- Vector embeddings
-- LLMs
-# BizBrain
-
-A Python-based Q&A system for analyzing legal documents and contracts.
 
 ## Overview
 
@@ -147,6 +73,8 @@ BizBrain is organized into five distinct layers:
 - Python
 - LangChain
 - Vector embeddings
+- Large Language Models
+
 
 ## Technical Details
 
