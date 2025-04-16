@@ -6,8 +6,10 @@ A Python-based Q&A system for analyzing legal documents and contracts.
 
 - `/raw_documents/` - Original, unprocessed legal documents (contracts, agreements, etc.)
 - `/processed_documents/` - Processed document data
+  - `/full_text/` - Cleaned and extracted complete text of documents before chunking
   - `/chunks/` - Contains JSON files with chunked text from documents
   - `document_index.json` - Master index of all documents with metadata
+  - `document_registry.json` - Tracks processing status of documents
 - `/vector_store/` - Storage for vector embeddings
   - `faiss.index` - The vector database (created during processing)
   - `document_to_id_map.json` - Maps between vector IDs and document chunks
@@ -90,6 +92,7 @@ BizBrain processes legal documents into searchable chunks, creates vector embedd
 
 - `/raw_documents/` - Original, unprocessed legal documents (contracts, agreements, etc.)
 - `/processed_documents/` - Processed document data
+  - `/full_text/` - Cleaned and extracted complete text of documents before chunking
   - `/chunks/` - Contains JSON files with chunked text from documents
   - `document_index.json` - Master index of all documents with metadata
   - `document_registry.json` - Tracks processing status of documents
@@ -174,9 +177,10 @@ This registry enables incremental processing when new documents are added withou
 
 1. **Loading**: Documents are loaded from `/raw_documents/`
 2. **Extraction**: Text is extracted and cleaned
-3. **Chunking**: Documents are split into semantic chunks with overlap
-4. **Metadata Extraction**: Information like document title, date, section headers is identified
-5. **Output**: Processed chunks are saved as JSON files in `/processed_documents/chunks/`
+3. **Storage**: Complete cleaned text saved to /processed_documents/full_text/
+4. **Chunking**: Documents are split into semantic chunks with overlap
+5. **Metadata Extraction**: Information like document title, date, section headers is identified
+6. **Output**: Processed chunks are saved as JSON files in `/processed_documents/chunks/`
 
 ### Chunk Format
 
