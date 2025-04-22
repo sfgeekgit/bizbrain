@@ -90,7 +90,8 @@ The system tracks document processing status in `/processed_documents/document_r
       "last_processed": "2025-04-12T14:32:05",
       "chunk_count": 45,
       "document_id": "doc_001",
-      "md5_hash": "e8d4e5e2f0a3c1b2d3a4e5f6a7b8c9d0"
+      "md5_hash": "e8d4e5e2f0a3c1b2d3a4e5f6a7b8c9d0",
+      "effective_date": "2025-01-15T00:00:00"
     }
   },
   "last_update": "2025-04-12T14:32:05",
@@ -107,7 +108,7 @@ This registry enables incremental processing when new documents are added withou
 2. **Extraction**: Text is extracted and cleaned
 3. **Storage**: Complete cleaned text saved to /processed_documents/full_text/
 4. **Chunking**: Documents are split into semantic chunks with overlap
-5. **Metadata Extraction**: Information like document title, date, section headers is identified
+5. **Metadata Extraction**: Information like document title, effective_date, section headers is identified and extracted from document content using NLP techniques
 6. **Output**: Processed chunks are saved as JSON files in `/processed_documents/chunks/`
 
 ### Chunk Format
@@ -123,7 +124,8 @@ Each document chunk is stored in a JSON structure:
     "title": "Series A Agreement",
     "section": "Funding Terms",
     "page": 4,
-    "paragraph": 2
+    "paragraph": 2,
+    "effective_date": "2025-01-15"
   }
 }
 ```
