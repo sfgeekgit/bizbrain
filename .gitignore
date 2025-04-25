@@ -5,3 +5,7 @@
 !README.md
 !CLAUDE.md
 !notes.md
+
+# Ignore Python cache files
+**/__pycache__/
+
