@@ -14,25 +14,23 @@ BizBrain processes legal documents into searchable chunks, creates vector embedd
 - Focus on accuracy over speed
 - Designed for internal business use
 
-## Directory Structure
+## Commands
+- Run main script: `python src/main.py`
+- Process documents: `python src/main.py --process`
+- Check document status: `python src/main.py --status`
+- Ask question: `python src/main.py --question "your question"`
+- Interactive mode: `python src/main.py --interactive`
+- Setup directories: `python src/utils/dir_setup.py`
+- Install dependencies: `pip install -r requirements.txt`
 
-- `/raw_documents/` - Original, unprocessed legal documents (contracts, agreements, etc.)
-- `/processed_documents/` - Processed document data
-  - `/full_text/` - Cleaned and extracted complete text of documents before chunking
-  - `/chunks/` - Contains JSON files with chunked text from documents
-  - `document_index.json` - Master index of all documents with metadata
-  - `document_registry.json` - Tracks processing status of documents
-- `/vector_store/` - Storage for vector embeddings
-  - `faiss.index` - The vector database (created during processing)
-  - `document_to_id_map.json` - Maps between vector IDs and document chunks
-- `/conversation_history/` - Records of Q&A interactions with the system
-- `/logs/` - System logs for debugging and monitoring
-- `/src/` - Python source code
-  - `/processors/` - Document processing scripts
-  - `/indexers/` - Vector storage and indexing scripts
-  - `/retrievers/` - Query and retrieval scripts
-  - `/reasoners/` - LLM integration and answer generation
-  - `/interface/` - API and UI implementation
+
+## Project Structure
+- `src/`: Main source code with modular architecture
+- `raw_documents/`: Original document files (PDF, DOCX)
+- `processed_documents/`: Extracted text and chunks
+- `vector_store/`: Vector embeddings for retrieval
+
+
 
 ## System Architecture
 
@@ -77,6 +75,28 @@ BizBrain is organized into five distinct layers:
 
 
 ## Technical Details
+
+### Directory Structure
+
+- `/raw_documents/` - Original, unprocessed legal documents (contracts, agreements, etc.)
+- `/processed_documents/` - Processed document data
+  - `/full_text/` - Cleaned and extracted complete text of documents before chunking
+  - `/chunks/` - Contains JSON files with chunked text from documents
+  - `document_index.json` - Master index of all documents with metadata
+  - `document_registry.json` - Tracks processing status of documents
+- `/vector_store/` - Storage for vector embeddings
+  - `faiss.index` - The vector database (created during processing)
+  - `document_to_id_map.json` - Maps between vector IDs and document chunks
+- `/conversation_history/` - Records of Q&A interactions with the system
+- `/logs/` - System logs for debugging and monitoring
+- `/src/` - Python source code
+  - `/processors/` - Document processing scripts
+  - `/indexers/` - Vector storage and indexing scripts
+  - `/retrievers/` - Query and retrieval scripts
+  - `/reasoners/` - LLM integration and answer generation
+  - `/interface/` - API and UI implementation
+
+
 
 ### Document Registry
 
