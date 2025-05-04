@@ -30,9 +30,18 @@ class TextChunker:
         with open(self.registry_path, 'w', encoding='utf-8') as f:
             json.dump(self.registry, f, indent=2)
     
-    def _extract_metadata(self, text, document_id, filename):
+    def _extract_metadata(self, text, document_id, filename, doc_entry=None):
         """Extract metadata from document text.
         This is a simplified version - in a real system, this would be more sophisticated.
+        
+        Args:
+            text (str): Document text
+            document_id (str): Document ID
+            filename (str): Document filename
+            doc_entry (dict, optional): Document entry from registry
+            
+        Returns:
+            dict: Document metadata
         """
         # Try to extract a title
         title_match = re.search(r'^#*\s*(.+?)\n', text) or re.search(r'^(.+?)\n', text)
@@ -44,6 +53,14 @@ class TextChunker:
             "title": title.strip(),
             "filename": filename
         }
+        
+        # Add batch information if available
+        if doc_entry:
+            if "batch_id" in doc_entry:
+                metadata["batch_id"] = doc_entry["batch_id"]
+            
+            if "effective_date" in doc_entry:
+                metadata["effective_date"] = doc_entry["effective_date"]
         
         return metadata
     
@@ -114,8 +131,8 @@ class TextChunker:
         with open(full_text_path, 'r', encoding='utf-8') as f:
             text = f.read()
         
-        # Extract metadata
-        metadata = self._extract_metadata(text, document_id, filename)
+        # Extract metadata, including batch and effective date if available
+        metadata = self._extract_metadata(text, document_id, filename, doc_entry)
         
         # Chunk the text
         chunks = self._chunk_text(text, metadata, document_id)

@@ -2,6 +2,7 @@ import os
 import json
 import hashlib
 from datetime import datetime
+import re
 import PyPDF2
 from docx import Document
 
@@ -23,9 +24,11 @@ class DocumentLoader:
         else:
             self.registry = {
                 "documents": {},
+                "batches": {},
                 "last_update": datetime.now().isoformat(),
                 "total_documents": 0,
-                "total_chunks": 0
+                "total_chunks": 0,
+                "total_batches": 0
             }
             self._save_registry()
     
@@ -34,6 +37,62 @@ class DocumentLoader:
         self.registry["last_update"] = datetime.now().isoformat()
         with open(self.registry_path, 'w', encoding='utf-8') as f:
             json.dump(self.registry, f, indent=2)
+    
+    def create_batch(self, effective_date):
+        """Create a new batch with the given effective date.
+        
+        Args:
+            effective_date (str): The effective date for this batch in YYYY-MM-DD format
+            
+        Returns:
+            str: The ID of the newly created batch
+        """
+        # Create a new batch ID
+        batch_id = f"batch_{str(self.registry.get('total_batches', 0) + 1).zfill(3)}"
+        
+        # Add batch to registry
+        self.registry.setdefault("batches", {})
+        self.registry["batches"][batch_id] = {
+            "created_at": datetime.now().isoformat(),
+            "effective_date": effective_date,
+            "document_count": 0
+        }
+        
+        # Update total batches
+        self.registry["total_batches"] = len(self.registry["batches"])
+        self._save_registry()
+        
+        return batch_id
+    
+    def validate_date_format(self, date_str):
+        """Validate if a string is in YYYY-MM-DD format.
+        
+        Args:
+            date_str (str): The date string to validate
+            
+        Returns:
+            bool: True if valid, False otherwise
+        """
+        # Check if the string matches YYYY-MM-DD pattern
+        pattern = r"^\d{4}-\d{2}-\d{2}$"
+        if not re.match(pattern, date_str):
+            return False
+        
+        # Try to parse the date
+        try:
+            year, month, day = map(int, date_str.split('-'))
+            # Basic validation of year, month, day values
+            if not (1900 <= year <= 2100 and 1 <= month <= 12 and 1 <= day <= 31):
+                return False
+            
+            # Check days in month (simplified - doesn't account for leap years)
+            days_in_month = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+            if day > days_in_month[month]:
+                return False
+                
+            return True
+        except ValueError:
+            return False
     
     def _calculate_md5(self, file_path):
         """Calculate MD5 hash of a file."""
@@ -72,8 +131,17 @@ class DocumentLoader:
         else:
             raise ValueError(f"Unsupported file format: {ext}")
     
-    def process_document(self, filename):
-        """Process a document and save its full text."""
+    def process_document(self, filename, batch_id=None, effective_date=None):
+        """Process a document and save its full text.
+        
+        Args:
+            filename (str): Name of the file to process
+            batch_id (str, optional): ID of the batch this document belongs to
+            effective_date (str, optional): Effective date for this document (YYYY-MM-DD)
+            
+        Returns:
+            tuple or None: (document_id, text) if successful, None otherwise
+        """
         file_path = os.path.join(self.raw_dir, filename)
         md5_hash = self._calculate_md5(file_path)
         
@@ -100,12 +168,23 @@ class DocumentLoader:
                 f.write(text)
             
             # Update registry
-            self.registry["documents"][filename] = {
+            doc_entry = {
                 "status": "text_extracted",
                 "last_processed": datetime.now().isoformat(),
                 "document_id": doc_id,
                 "md5_hash": md5_hash
             }
+            
+            # Add batch information if provided
+            if batch_id and effective_date:
+                doc_entry["batch_id"] = batch_id
+                doc_entry["effective_date"] = effective_date
+                
+                # Update batch document count
+                if "batches" in self.registry and batch_id in self.registry["batches"]:
+                    self.registry["batches"][batch_id]["document_count"] += 1
+            
+            self.registry["documents"][filename] = doc_entry
             
             if len(self.registry["documents"]) > self.registry["total_documents"]:
                 self.registry["total_documents"] = len(self.registry["documents"])
@@ -134,6 +213,59 @@ class DocumentLoader:
                 unprocessed.append(filename)
         
         return unprocessed
+    
+    def process_batch(self, filenames, effective_date):
+        """Process a batch of documents with the given effective date.
+        
+        Args:
+            filenames (list): List of filenames to process in this batch
+            effective_date (str): Effective date for this batch (YYYY-MM-DD)
+            
+        Returns:
+            tuple: (batch_id, processed_docs, failed_docs)
+        """
+        if not filenames:
+            return None, [], []
+        
+        # Validate date format
+        if not self.validate_date_format(effective_date):
+            raise ValueError(f"Invalid date format: {effective_date}. Expected YYYY-MM-DD")
+        
+        # Create a new batch
+        batch_id = self.create_batch(effective_date)
+        
+        processed_docs = []
+        failed_docs = []
+        
+        # Process each document in the batch
+        for filename in filenames:
+            print(f"Processing {filename} in batch {batch_id}...")
+            result = self.process_document(filename, batch_id, effective_date)
+            
+            if result:
+                doc_id, _ = result
+                processed_docs.append((doc_id, filename))
+            else:
+                failed_docs.append(filename)
+        
+        return batch_id, processed_docs, failed_docs
+    
+    def get_batch_info(self, batch_id=None):
+        """Get information about batches.
+        
+        Args:
+            batch_id (str, optional): If provided, returns info for this batch only
+            
+        Returns:
+            dict: Batch information
+        """
+        if "batches" not in self.registry:
+            return {}
+            
+        if batch_id:
+            return self.registry["batches"].get(batch_id, {})
+        
+        return self.registry["batches"]
 
 
 if __name__ == "__main__":

@@ -13,15 +13,18 @@ BizBrain processes legal documents into searchable chunks, creates vector embedd
 - Source citations for all answers
 - Focus on accuracy over speed
 - Designed for internal business use
+- Batch document processing with effective dates
 
 ## Commands
 - Run main script: `python src/main.py`
-- Process documents: `python src/main.py --process`
+- Process documents in batches: `python src/main.py --batch-process`
 - Check document status: `python src/main.py --status`
 - Ask question: `python src/main.py --question "your question"`
 - Interactive mode: `python src/main.py --interactive`
 - Setup directories: `python src/utils/dir_setup.py`
 - Install dependencies: `pip install -r requirements.txt`
+
+> Note: The `--process` command is deprecated and has been replaced by `--batch-process`.
 
 
 ## Project Structure
@@ -110,25 +113,37 @@ The system tracks document processing status in `/processed_documents/document_r
       "last_processed": "2025-04-12T14:32:05",
       "chunk_count": 45,
       "document_id": "doc_001",
-      "md5_hash": "e8d4e5e2f0a3c1b2d3a4e5f6a7b8c9d0"
+      "md5_hash": "e8d4e5e2f0a3c1b2d3a4e5f6a7b8c9d0",
+      "batch_id": "batch_001",
+      "effective_date": "2025-04-12"
+    }
+  },
+  "batches": {
+    "batch_001": {
+      "created_at": "2025-04-12T14:30:00",
+      "effective_date": "2025-04-12",
+      "document_count": 1
     }
   },
   "last_update": "2025-04-12T14:32:05",
   "total_documents": 1,
-  "total_chunks": 45
+  "total_chunks": 45,
+  "total_batches": 1
 }
 ```
 
-This registry enables incremental processing when new documents are added without reprocessing the entire collection.
+This registry enables incremental processing when new documents are added without reprocessing the entire collection. It also tracks document batches with their effective dates.
 
 ### Document Processing Flow
 
-1. **Loading**: Documents are loaded from `/raw_documents/`
-2. **Extraction**: Text is extracted and cleaned
-3. **Storage**: Complete cleaned text saved to /processed_documents/full_text/
-4. **Chunking**: Documents are split into semantic chunks with overlap
-5. **Metadata Extraction**: Information like document title, section headers is identified and extracted from document content using NLP techniques
-6. **Output**: Processed chunks are saved as JSON files in `/processed_documents/chunks/`
+1. **Batch Creation**: User creates a batch with an effective date
+2. **Document Selection**: User selects which documents to include in the batch
+3. **Loading**: Selected documents are loaded from `/raw_documents/`
+4. **Extraction**: Text is extracted and cleaned
+5. **Storage**: Complete cleaned text saved to /processed_documents/full_text/
+6. **Chunking**: Documents are split into semantic chunks with overlap
+7. **Metadata Extraction**: Information like document title, section headers, effective date is identified and extracted
+8. **Output**: Processed chunks are saved as JSON files in `/processed_documents/chunks/`
 
 ### Chunk Format
 
@@ -142,8 +157,10 @@ Each document chunk is stored in a JSON structure:
     "document_id": "doc_001",
     "title": "Series A Agreement",
     "section": "Funding Terms",
-    "page": 4,
-    "paragraph": 2
+    "chunk_num": 23,
+    "batch_id": "batch_001",
+    "effective_date": "2025-04-12",
+    "filename": "contract_123.pdf"
   }
 }
 ```
@@ -156,10 +173,33 @@ When new documents are added:
 3. Retrieval (Layer 3) and Reasoning (Layer 4) layers automatically incorporate new documents in future queries
 4. No changes needed to Interface Layer (Layer 5)
 
+### Batch Processing and Effective Dates
+
+BizBrain supports batch document processing with effective dates:
+
+1. **Interactive Batch Creation**:
+   - Users can initiate batch processing with `python src/main.py --batch-process`
+   - The system prompts for an effective date in YYYY-MM-DD format
+   - Unprocessed documents are displayed, and users can select which to include
+
+2. **Effective Date Handling**:
+   - Each document in a batch shares the same effective date
+   - The effective date is stored in document metadata and passed to chunks
+   - Queries can consider document effective dates for time-sensitive information
+
+3. **Batch Management**:
+   - Batches are tracked in the document registry with unique IDs
+   - The `document_status` command shows batch information
+   - Each document is associated with its batch and effective date
+
+4. **Command-line and Interactive Support**:
+   - Batch processing is available both via command-line and interactive mode
+   - Interactive mode provides a simple Y/n interface for document selection
+
 ### Citation Mechanism
 
 When answering questions, the system:
 1. Retrieves relevant chunks from the vector store
 2. Provides citations to specific document sections
-3. Includes document title, section name, and page number when available
+3. Includes document title, section name, and effective date when available
 4. Enables verification by tracing back to original documents
