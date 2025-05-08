@@ -244,14 +244,19 @@ class BizBrainCLI:
             
             print(f"{doc_id:<12} {status:<15} {batch_id:<12} {effective_date:<15} {chunk_count:<8} {filename:<30}")
     
-    def interactive_mode(self):
-        """Run BizBrain in interactive mode."""
-        print("\nBizBrain Interactive Mode")
-        print("Commands:")
+    def display_help(self):
+        """Display the list of available commands."""
+        print("\nBizBrain Commands:")
+        print("  'help' - Display this help information")
         print("  'exit' - Quit the application")
         print("  'batch' - Process documents in batches with effective dates")
         print("  'status' - See document status")
-        print("  Or type your question about documents\n")
+        print("  Or type your question about documents")
+    
+    def interactive_mode(self):
+        """Run BizBrain in interactive mode."""
+        print("\nBizBrain Interactive Mode")
+        self.display_help()
         
         # Check for API key
         key_available = load_anthropic_api_key()
@@ -272,6 +277,8 @@ class BizBrainCLI:
                 self.batch_process_documents()
             elif user_input.lower() == 'status':
                 self.document_status()
+            elif user_input.lower() == 'help':
+                self.display_help()
             elif user_input:
                 response = self.answer_question(user_input)
                 print(f"\nAnswer: {response['answer']}")

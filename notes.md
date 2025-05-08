@@ -1,4 +1,10 @@
-# For version 2.
+
+
+Have you read CLAUDE.md?
+Make sure you read CLAUDE.md
+
+
+### For version 2.  Ignore all this for now
 
 Features to add later, NOT in current version
 
