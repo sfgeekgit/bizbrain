@@ -8,7 +8,6 @@ from reasoners.answer_generator import AnswerGenerator
 from utils.config import DEFAULT_RETRIEVAL_TOP_K
 from utils.common import load_anthropic_api_key
 
-
 class BizBrainCLI:
     """Command-line interface for BizBrain."""
     
@@ -18,17 +17,20 @@ class BizBrainCLI:
         self.processed_dir = os.path.join(base_dir, "processed_documents")
         self.vector_store_dir = os.path.join(base_dir, "vector_store")
         self.history_dir = os.path.join(base_dir, "conversation_history")
-        
+
         # Load API key from environment or config file
         load_anthropic_api_key()
-        
+
         # Initialize components
+        ##print ("this is slow part?")
+        # these next few lines make start up slow, maybe look in to optimizing, or just wait a few seconds.
         self.document_loader = DocumentLoader(self.raw_dir, self.processed_dir)
         self.text_chunker = TextChunker(self.processed_dir)
         self.vector_indexer = VectorIndexer(self.processed_dir, self.vector_store_dir)
         self.retriever = HybridRetriever(self.processed_dir, self.vector_store_dir)
         self.answer_generator = AnswerGenerator(history_dir=self.history_dir)
-    
+        # print ("Got it")
+        
     def process_documents(self):
         """Process any new or updated documents."""
         print("Checking for new or updated documents...")

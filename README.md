@@ -182,3 +182,15 @@ When answering questions, the system:
 2. Provides citations to specific document sections
 3. Includes document title, effective date, section name, and page number when available
 4. Enables verification by tracing back to original documents
+
+## Maintenance
+
+### Resetting the System
+
+If you need to reset the system and reprocess all documents from scratch, run:
+
+```bash
+rm -rf processed_documents/ vector_store/ && mkdir -p processed_documents/full_text processed_documents/chunks vector_store/
+```
+
+This command removes all processed documents and vector embeddings, then recreates the necessary directory structure.
