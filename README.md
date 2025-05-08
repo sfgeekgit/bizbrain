@@ -24,8 +24,6 @@ BizBrain processes legal documents into searchable chunks, creates vector embedd
 - Setup directories: `python src/utils/dir_setup.py`
 - Install dependencies: `pip install -r requirements.txt`
 
-> Note: The `--process` command is deprecated and has been replaced by `--batch-process`.
-
 
 ## Project Structure
 - `src/`: Main source code with modular architecture
@@ -175,31 +173,12 @@ When new documents are added:
 
 ### Batch Processing and Effective Dates
 
-BizBrain supports batch document processing with effective dates:
-
-1. **Interactive Batch Creation**:
-   - Users can initiate batch processing with `python src/main.py --batch-process`
-   - The system prompts for an effective date in YYYY-MM-DD format
-   - Unprocessed documents are displayed, and users can select which to include
-
-2. **Effective Date Handling**:
-   - Each document in a batch shares the same effective date
-   - The effective date is stored in document metadata and passed to chunks
-   - Queries can consider document effective dates for time-sensitive information
-
-3. **Batch Management**:
-   - Batches are tracked in the document registry with unique IDs
-   - The `document_status` command shows batch information
-   - Each document is associated with its batch and effective date
-
-4. **Command-line and Interactive Support**:
-   - Batch processing is available both via command-line and interactive mode
-   - Interactive mode provides a simple Y/n interface for document selection
+BizBrain supports processing documents in batches with effective dates. Users can specify when documents become valid, allowing for time-sensitive document analysis and retrieval.
 
 ### Citation Mechanism
 
 When answering questions, the system:
 1. Retrieves relevant chunks from the vector store
 2. Provides citations to specific document sections
-3. Includes document title, section name, and effective date when available
+3. Includes document title, effective date, section name, and page number when available
 4. Enables verification by tracing back to original documents
