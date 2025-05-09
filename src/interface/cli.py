@@ -34,66 +34,6 @@ class BizBrainCLI:
         self.answer_generator = AnswerGenerator(history_dir=self.history_dir)
         # print ("Got it")
         
-    def process_documents(self):
-        """Process any new or updated documents."""
-        print("Checking for new or updated documents...")
-        
-        # Ensure directories exist
-        if not os.path.exists(self.processed_dir):
-            os.makedirs(self.processed_dir, exist_ok=True)
-            os.makedirs(os.path.join(self.processed_dir, 'full_text'), exist_ok=True)
-            os.makedirs(os.path.join(self.processed_dir, 'chunks'), exist_ok=True)
-        
-        # Always initialize document registry by calling get_unprocessed_documents
-        # This ensures the registry exists before other components try to use it
-        unprocessed = self.document_loader.get_unprocessed_documents()
-        
-        if not unprocessed:
-            print("No new or updated documents found.")
-            return
-        
-        print(f"Found {len(unprocessed)} documents to process.")
-        
-        # Generate a default batch ID for documents processed outside the batch system
-        current_date = datetime.now().strftime("%Y-%m-%d")
-        batch_id = "batch_auto"
-        
-        # Check if auto batch exists, create if not
-        if "batches" not in self.document_loader.registry or batch_id not in self.document_loader.registry["batches"]:
-            self.document_loader.registry.setdefault("batches", {})
-            self.document_loader.registry["batches"][batch_id] = {
-                "created_at": datetime.now().isoformat(),
-                "effective_date": current_date,
-                "document_count": 0
-            }
-            self.document_loader.registry["total_batches"] = len(self.document_loader.registry["batches"])
-            self.document_loader._save_registry()
-        
-        # Process each document atomically
-        processed_docs = []
-        failed_docs = []
-        
-        for filename in unprocessed:
-            success, doc_id, chunk_count, error_msg = self.fully_process_document(
-                filename, batch_id, current_date
-            )
-            
-            if success:
-                processed_docs.append((doc_id, filename, chunk_count))
-                print(f"✓ Document {filename} fully processed with {chunk_count} chunks")
-            else:
-                failed_docs.append((filename, error_msg))
-                print(f"✗ Failed to process {filename}: {error_msg}")
-        
-        # Report results
-        print(f"\nProcessed {len(processed_docs)} documents")
-        
-        if failed_docs:
-            print(f"Failed to process {len(failed_docs)} documents:")
-            for doc, err in failed_docs:
-                print(f"  - {doc}: {err}")
-        
-        print("Document processing complete!")
     
     def answer_question(self, question, top_k=DEFAULT_RETRIEVAL_TOP_K):
         """Answer a question based on the processed documents."""
@@ -483,9 +423,6 @@ if __name__ == "__main__":
         
         # Create CLI interface
         bizbrain = BizBrainCLI()
-        
-        # Process documents first
-        bizbrain.process_documents()
         
         # Run interactive mode
         bizbrain.interactive_mode()

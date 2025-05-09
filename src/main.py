@@ -23,9 +23,6 @@ def main():
                         help='Ask a question')
     parser.add_argument('--interactive', action='store_true', 
                         help='Start interactive mode')
-    # Keep the --process argument for backward compatibility but mark as deprecated
-    parser.add_argument('--process', action='store_true',
-                        help=argparse.SUPPRESS)
     
     args = parser.parse_args()
     
@@ -35,9 +32,6 @@ def main():
     bizbrain = BizBrainCLI()
     
     if args.batch_process:
-        bizbrain.batch_process_documents()
-    elif args.process:
-        print("NOTE: The --process command is deprecated. Please use --batch-process instead.")
         bizbrain.batch_process_documents()
     elif args.status:
         bizbrain.document_status()
@@ -53,7 +47,7 @@ def main():
             else:
                 for source in response['sources']:
                     print(f"- {source}")
-    elif args.interactive or not any([args.batch_process, args.process, args.status, args.question]):
+    elif args.interactive or not any([args.batch_process, args.status, args.question]):
         bizbrain.interactive_mode()
 
 if __name__ == "__main__":
