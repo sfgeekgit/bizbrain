@@ -136,12 +136,15 @@ This registry enables incremental processing when new documents are added withou
 
 1. **Batch Creation**: User creates a batch with an effective date
 2. **Document Selection**: User selects which documents to include in the batch
-3. **Loading**: Selected documents are loaded from `/raw_documents/`
-4. **Extraction**: Text is extracted and cleaned
-5. **Storage**: Complete cleaned text saved to /processed_documents/full_text/
-6. **Chunking**: Documents are split into semantic chunks with overlap
-7. **Metadata Extraction**: Information like document title, section headers, effective date is identified and extracted
-8. **Output**: Processed chunks are saved as JSON files in `/processed_documents/chunks/`
+3. **Atomic Processing**: Each document is processed through the complete pipeline:
+   - **Extraction**: Text is extracted from documents and processed in memory
+   - **Chunking**: Documents are split into semantic chunks with overlap
+   - **Embedding**: Vector embeddings are created for each chunk
+   - **Storage**: All data is written to disk only after successful processing
+   - **Registry Update**: Document registry is updated as the final step
+4. **Completion**: Documents are fully processed and ready for querying
+
+The system uses an atomic processing model where documents are either fully processed or not processed at all. This ensures system consistency and eliminates intermediate states. All documents must be processed through the batch interface, which requires specifying an effective date.
 
 ### Chunk Format
 
