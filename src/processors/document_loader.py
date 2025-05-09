@@ -6,14 +6,23 @@ import re
 import PyPDF2
 from docx import Document
 
+# Optional imports for OCR capabilities
+try:
+    import pytesseract
+    from pdf2image import convert_from_path
+    HAS_OCR_DEPS = True
+except ImportError:
+    HAS_OCR_DEPS = False
+
 
 class DocumentLoader:
     """Loads documents from various formats and extracts text."""
     
-    def __init__(self, raw_dir, processed_dir):
+    def __init__(self, raw_dir, processed_dir, enable_ocr=True):
         self.raw_dir = raw_dir
         self.full_text_dir = os.path.join(processed_dir, 'full_text')
         self.registry_path = os.path.join(processed_dir, 'document_registry.json')
+        self.enable_ocr = enable_ocr and HAS_OCR_DEPS
         self._load_registry()
     
     def _load_registry(self):
@@ -101,14 +110,86 @@ class DocumentLoader:
             for chunk in iter(lambda: f.read(4096), b""):
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
+        
+    def _is_text_empty(self, text):
+        """Check if text is empty or contains only whitespace.
+        
+        Args:
+            text (str): The text to check
+            
+        Returns:
+            bool: True if text is empty or only contains whitespace
+        """
+        if not text:
+            return True
+        
+        # Remove all whitespace and check if anything remains
+        stripped = re.sub(r'\s+', '', text)
+        return len(stripped) == 0
+        
+    def _extract_text_with_ocr(self, pdf_path, dpi=300):
+        """Extract text from PDF using OCR.
+        
+        Args:
+            pdf_path (str): Path to the PDF file
+            dpi (int): DPI to use for PDF to image conversion
+            
+        Returns:
+            str: Extracted text
+        """
+        if not HAS_OCR_DEPS:
+            print("OCR dependencies not available. Install pdf2image and pytesseract.")
+            return ""
+            
+        filename = os.path.basename(pdf_path)
+        print(f"Standard text extraction failed for {filename}. Trying OCR...")
+        
+        try:
+            # Convert PDF to images
+            print(f"Converting PDF to images at {dpi} DPI...")
+            images = convert_from_path(pdf_path, dpi=dpi)
+            print(f"Converted to {len(images)} images")
+            
+            # Perform OCR on each page
+            full_text = ""
+            for i, image in enumerate(images):
+                print(f"Performing OCR on page {i+1}/{len(images)}...")
+                page_text = pytesseract.image_to_string(image)
+                full_text += page_text + "\n\n"
+            
+            return full_text
+            
+        except Exception as e:
+            print(f"Error in OCR process: {str(e)}")
+            return ""
     
     def _extract_text_from_pdf(self, file_path):
-        """Extract text from PDF file."""
+        """Extract text from PDF file.
+        
+        First tries standard PDF text extraction. If that fails to extract
+        meaningful text, falls back to OCR if enabled.
+        
+        Returns:
+            str: Extracted text
+        """
+        # Try standard extraction first
         text = ""
         with open(file_path, 'rb') as file:
             pdf_reader = PyPDF2.PdfReader(file)
             for page in pdf_reader.pages:
                 text += page.extract_text() + "\n\n"
+        
+        # Check if we got meaningful text
+        if not self._is_text_empty(text):
+            return text
+            
+        # If standard extraction failed and OCR is enabled, try OCR
+        if self.enable_ocr and HAS_OCR_DEPS:
+            ocr_text = self._extract_text_with_ocr(file_path)
+            if not self._is_text_empty(ocr_text):
+                return ocr_text
+                
+        # Return original text (which might be empty)
         return text
     
     def _extract_text_from_docx(self, file_path):
@@ -155,6 +236,15 @@ class DocumentLoader:
         try:
             text = self.extract_document_text(filename)
             
+            # Validate extracted text - don't process documents with empty text
+            if self._is_text_empty(text):
+                print(f"Error: No text could be extracted from {filename}.")
+                if self.enable_ocr and HAS_OCR_DEPS:
+                    print("OCR was attempted but failed to extract text.")
+                else:
+                    print("Consider enabling OCR for better text extraction.")
+                return None
+            
             # Create a document ID if it doesn't exist
             if filename not in self.registry["documents"] or \
                "document_id" not in self.registry["documents"][filename]:
@@ -169,7 +259,7 @@ class DocumentLoader:
             
             # Update registry
             doc_entry = {
-                "status": "text_extracted",
+                "status": "processed",
                 "last_processed": datetime.now().isoformat(),
                 "document_id": doc_id,
                 "md5_hash": md5_hash
@@ -272,8 +362,18 @@ if __name__ == "__main__":
     # Simple test code
     loader = DocumentLoader(
         raw_dir="raw_documents",
-        processed_dir="processed_documents"
+        processed_dir="processed_documents",
+        enable_ocr=True  # Enable OCR as a fallback for PDF extraction
     )
+    
+    # Check if OCR dependencies are available
+    if loader.enable_ocr:
+        print("OCR is enabled and dependencies are available.")
+    else:
+        print("OCR is disabled or dependencies are missing.")
+        print("To enable OCR, install the required packages:")
+        print("  pip install pdf2image pytesseract")
+        print("  apt-get install poppler-utils tesseract-ocr")
     
     unprocessed = loader.get_unprocessed_documents()
     print(f"Found {len(unprocessed)} documents to process")
@@ -282,4 +382,7 @@ if __name__ == "__main__":
         print(f"Processing {doc}...")
         result = loader.process_document(doc)
         if result:
-            print(f"Processed as {result[0]}")
+            doc_id, _ = result
+            print(f"Successfully processed as {doc_id}")
+        else:
+            print(f"Failed to process {doc} - no text was extracted")
