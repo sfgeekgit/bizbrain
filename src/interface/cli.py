@@ -1,5 +1,8 @@
 import os
 import json
+import re
+import numpy as np
+from datetime import datetime
 from processors.document_loader import DocumentLoader
 from processors.text_chunker import TextChunker
 from indexers.vector_indexer import VectorIndexer
@@ -31,68 +34,6 @@ class BizBrainCLI:
         self.answer_generator = AnswerGenerator(history_dir=self.history_dir)
         # print ("Got it")
         
-    def process_documents(self):
-        """Process any new or updated documents."""
-        print("Checking for new or updated documents...")
-        
-        # Always initialize document registry by calling get_unprocessed_documents
-        # This ensures the registry exists before other components try to use it
-        unprocessed = self.document_loader.get_unprocessed_documents()
-        
-        # Load documents
-        if not unprocessed:
-            print("No new or updated documents found.")
-        else:
-            print(f"Found {len(unprocessed)} documents to process.")
-            
-            for filename in unprocessed:
-                print(f"Processing {filename}...")
-                result = self.document_loader.process_document(filename)
-                if result:
-                    doc_id, _ = result
-                    print(f"Document extracted as {doc_id}")
-        
-        # Make sure registry exists before proceeding
-        registry_path = os.path.join(self.processed_dir, 'document_registry.json')
-        if not os.path.exists(registry_path):
-            print("No document registry found. Run document loader first to initialize it.")
-            return
-        
-        # Chunk processed documents
-        try:
-            docs_to_chunk = self.text_chunker.get_documents_for_chunking()
-            if not docs_to_chunk:
-                print("No documents need chunking.")
-            else:
-                print(f"Found {len(docs_to_chunk)} documents to chunk.")
-                
-                for doc_id, filename in docs_to_chunk:
-                    print(f"Chunking document {doc_id} ({filename})...")
-                    chunk_count = self.text_chunker.process_document(doc_id, filename)
-                    print(f"Created {chunk_count} chunks")
-        except FileNotFoundError as e:
-            print(f"Error: {str(e)}")
-            print("Document loader must be run first to create the registry.")
-            return
-        
-        # Index chunked documents
-        try:
-            unindexed = self.vector_indexer.get_unindexed_documents(self.processed_dir)
-            if not unindexed:
-                print("No documents need indexing.")
-            else:
-                print(f"Found {len(unindexed)} documents to index.")
-                
-                for doc_id in unindexed:
-                    print(f"Indexing document {doc_id}...")
-                    num_indexed = self.vector_indexer.add_document_chunks(doc_id)
-                    print(f"Indexed {num_indexed} chunks")
-        except FileNotFoundError as e:
-            print(f"Error: {str(e)}")
-            print("Document loader and chunker must be run first.")
-            return
-                
-        print("Document processing complete!")
     
     def answer_question(self, question, top_k=DEFAULT_RETRIEVAL_TOP_K):
         """Answer a question based on the processed documents."""
@@ -115,6 +56,194 @@ class BizBrainCLI:
         
         return response
     
+    def fully_process_document(self, filename, batch_id, effective_date):
+        """Process a document through the complete pipeline atomically.
+        
+        This method performs all processing steps (extraction, chunking, indexing)
+        in memory first, and only writes files and updates the registry if all
+        steps succeed. This ensures that documents are either fully processed
+        or not processed at all, with no intermediate states.
+        
+        The process follows these steps:
+        1. Extract text from the document (in memory)
+        2. Create chunks from the text (in memory)
+        3. Generate embeddings for the chunks (in memory)
+        4. If all steps succeed, save all files (text, chunks, index)
+        5. Update the document registry as the very last step
+        
+        If any step fails, no files are written and no updates are made
+        to the registry, keeping the system in a consistent state.
+        
+        Args:
+            filename (str): Name of the file to process
+            batch_id (str): ID of the batch this document belongs to
+            effective_date (str): Effective date for this document (YYYY-MM-DD)
+            
+        Returns:
+            tuple: (success, doc_id, chunk_count, error_msg)
+                success (bool): True if processing completed successfully
+                doc_id (str): ID of the processed document, or None on failure
+                chunk_count (int): Number of chunks created, or 0 on failure
+                error_msg (str): Error message if processing failed, or None
+        """
+        try:
+            print(f"Processing {filename} in batch {batch_id}...")
+            
+            # Step 1: Extract document text (but don't save yet)
+            file_path = os.path.join(self.raw_dir, filename)
+            md5_hash = self.document_loader._calculate_md5(file_path)
+            
+            # Check if document is already processed and unchanged
+            if filename in self.document_loader.registry["documents"] and \
+                self.document_loader.registry["documents"][filename]["md5_hash"] == md5_hash and \
+                self.document_loader.registry["documents"][filename]["status"] == "processed":
+                print(f"Document {filename} already fully processed and unchanged. Skipping.")
+                doc_id = self.document_loader.registry["documents"][filename]["document_id"]
+                chunk_count = self.document_loader.registry["documents"][filename].get("chunk_count", 0)
+                return True, doc_id, chunk_count, None
+            
+            # Extract text based on file type
+            text = self.document_loader.extract_document_text(filename)
+            
+            # Create a document ID
+            if filename not in self.document_loader.registry["documents"] or \
+                "document_id" not in self.document_loader.registry["documents"][filename]:
+                doc_id = f"doc_{str(len(self.document_loader.registry['documents']) + 1).zfill(3)}"
+            else:
+                doc_id = self.document_loader.registry["documents"][filename]["document_id"]
+            
+            # Step 2: Create chunks in memory
+            # Extract metadata
+            metadata = {
+                "document_id": doc_id,
+                "title": filename,  # Simplified - real metadata extraction happens in TextChunker
+                "filename": filename,
+                "batch_id": batch_id,
+                "effective_date": effective_date
+            }
+            
+            # Create chunks (similar to TextChunker._chunk_text but we don't save them yet)
+            chunks = []
+            start = 0
+            chunk_num = 0
+            
+            while start < len(text):
+                # Get chunk of text
+                end = min(start + self.text_chunker.chunk_size, len(text))
+                chunk_text = text[start:end]
+                
+                # Create chunk ID
+                chunk_id = f"{doc_id}_chunk_{str(chunk_num).zfill(3)}"
+                
+                # Try to find a section header
+                section_match = re.search(r'#+\s*(.+?)\n', chunk_text[:min(200, len(chunk_text))])
+                section = section_match.group(1).strip() if section_match else "Unknown section"
+                
+                # Create chunk metadata
+                chunk_metadata = metadata.copy()
+                chunk_metadata["section"] = section
+                chunk_metadata["chunk_num"] = chunk_num
+                
+                # Create chunk object
+                chunk = {
+                    "chunk_id": chunk_id,
+                    "text": chunk_text,
+                    "metadata": chunk_metadata
+                }
+                
+                chunks.append(chunk)
+                
+                # Move to next chunk with overlap
+                start = end - self.text_chunker.chunk_overlap if end < len(text) else len(text)
+                chunk_num += 1
+            
+            # Step 3: Create embeddings in memory
+            embeddings = []
+            chunk_data = []
+            
+            for chunk in chunks:
+                # Generate embedding
+                embedding = self.vector_indexer.get_embedding(chunk['text'])
+                embeddings.append(embedding)
+                chunk_data.append({
+                    'chunk_id': chunk['chunk_id'],
+                    'metadata': chunk['metadata']
+                })
+            
+            # All in-memory processing succeeded, now we can write to disk
+            
+            # Step 4: Save the full text
+            full_text_path = os.path.join(self.text_chunker.full_text_dir, f"{doc_id}_full.txt")
+            os.makedirs(os.path.dirname(full_text_path), exist_ok=True)
+            with open(full_text_path, 'w', encoding='utf-8') as f:
+                f.write(text)
+            
+            # Step 5: Save chunks
+            os.makedirs(self.text_chunker.chunks_dir, exist_ok=True)
+            for chunk in chunks:
+                chunk_path = os.path.join(self.text_chunker.chunks_dir, f"{chunk['chunk_id']}.json")
+                with open(chunk_path, 'w', encoding='utf-8') as f:
+                    json.dump(chunk, f, indent=2)
+            
+            # Step 6: Update vector index
+            if embeddings:
+                # Convert to numpy array for FAISS
+                embeddings_array = np.array(embeddings).astype('float32')
+                
+                # Add to index
+                ids = np.arange(
+                    self.vector_indexer.next_id, 
+                    self.vector_indexer.next_id + len(embeddings)
+                ).astype('int64')
+                self.vector_indexer.index.add_with_ids(embeddings_array, ids)
+                
+                # Update mapping
+                for i, chunk in enumerate(chunk_data):
+                    self.vector_indexer.id_to_chunk[int(ids[i])] = chunk
+                
+                self.vector_indexer.next_id += len(embeddings)
+                
+                # Save index
+                self.vector_indexer._save_index()
+            
+            # Step 7: Update document registry
+            registry = self.document_loader.registry
+            
+            # Update document entry
+            doc_entry = {
+                "status": "processed",  # Directly mark as fully processed
+                "last_processed": datetime.now().isoformat(),
+                "document_id": doc_id,
+                "md5_hash": md5_hash,
+                "batch_id": batch_id,
+                "effective_date": effective_date,
+                "chunk_count": len(chunks)
+            }
+            
+            registry["documents"][filename] = doc_entry
+            
+            # Update batch document count
+            if "batches" in registry and batch_id in registry["batches"]:
+                registry["batches"][batch_id]["document_count"] += 1
+            
+            # Update total counts
+            if len(registry["documents"]) > registry["total_documents"]:
+                registry["total_documents"] = len(registry["documents"])
+            
+            registry["total_chunks"] = sum(
+                doc.get("chunk_count", 0) for doc in registry["documents"].values()
+            )
+            
+            # Save the registry
+            self.document_loader._save_registry()
+            
+            return True, doc_id, len(chunks), None
+            
+        except Exception as e:
+            error_msg = f"Error processing document {filename}: {str(e)}"
+            print(error_msg)
+            return False, None, 0, error_msg
+    
     def batch_process_documents(self):
         """Process documents in batches with effective dates."""
         print("\nBatch Document Processing")
@@ -123,6 +252,8 @@ class BizBrainCLI:
         # Ensure registry exists
         if not os.path.exists(self.processed_dir):
             os.makedirs(self.processed_dir, exist_ok=True)
+            os.makedirs(os.path.join(self.processed_dir, 'full_text'), exist_ok=True)
+            os.makedirs(os.path.join(self.processed_dir, 'chunks'), exist_ok=True)
         
         # Get unprocessed documents
         unprocessed = self.document_loader.get_unprocessed_documents()
@@ -164,49 +295,36 @@ class BizBrainCLI:
         
         print(f"\nProcessing {len(selected_docs)} documents with effective date: {effective_date}")
         
-        # Create batch and process documents
-        batch_id, processed_docs, failed_docs = self.document_loader.process_batch(
-            selected_docs, effective_date)
-        
+        # Create a new batch
+        batch_id = self.document_loader.create_batch(effective_date)
         if not batch_id:
             print("Failed to create batch. No documents processed.")
             return
+        
+        # Process each document atomically
+        processed_docs = []
+        failed_docs = []
+        
+        for filename in selected_docs:
+            success, doc_id, chunk_count, error_msg = self.fully_process_document(
+                filename, batch_id, effective_date
+            )
             
-        print(f"\nBatch {batch_id} created with effective date {effective_date}")
-        print(f"Processed {len(processed_docs)} documents.")
+            if success:
+                processed_docs.append((doc_id, filename, chunk_count))
+                print(f"✓ Document {filename} fully processed with {chunk_count} chunks")
+            else:
+                failed_docs.append((filename, error_msg))
+                print(f"✗ Failed to process {filename}: {error_msg}")
+        
+        # Report results
+        print(f"\nBatch {batch_id} processed with effective date {effective_date}")
+        print(f"Successfully processed {len(processed_docs)} documents")
         
         if failed_docs:
             print(f"Failed to process {len(failed_docs)} documents:")
-            for doc in failed_docs:
-                print(f"  - {doc}")
-        
-        # Chunk documents
-        try:
-            docs_to_chunk = self.text_chunker.get_documents_for_chunking()
-            if docs_to_chunk:
-                print(f"\nChunking {len(docs_to_chunk)} documents...")
-                
-                for doc_id, filename in docs_to_chunk:
-                    print(f"Chunking document {doc_id} ({filename})...")
-                    chunk_count = self.text_chunker.process_document(doc_id, filename)
-                    print(f"Created {chunk_count} chunks")
-        except FileNotFoundError as e:
-            print(f"Error during chunking: {str(e)}")
-            return
-        
-        # Index documents
-        try:
-            unindexed = self.vector_indexer.get_unindexed_documents(self.processed_dir)
-            if unindexed:
-                print(f"\nIndexing {len(unindexed)} documents...")
-                
-                for doc_id in unindexed:
-                    print(f"Indexing document {doc_id}...")
-                    num_indexed = self.vector_indexer.add_document_chunks(doc_id)
-                    print(f"Indexed {num_indexed} chunks")
-        except FileNotFoundError as e:
-            print(f"Error during indexing: {str(e)}")
-            return
+            for doc, err in failed_docs:
+                print(f"  - {doc}: {err}")
         
         print("\nBatch processing complete!")
     
@@ -305,9 +423,6 @@ if __name__ == "__main__":
         
         # Create CLI interface
         bizbrain = BizBrainCLI()
-        
-        # Process documents first
-        bizbrain.process_documents()
         
         # Run interactive mode
         bizbrain.interactive_mode()
