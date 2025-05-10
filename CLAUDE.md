@@ -30,6 +30,7 @@ Any .md files in ./claude/
 Any .md files in ./.claude/ 
 Any other files that have instructions
 
+Be sure to read the README.md file now
 
 
 ## Interacting with Me
