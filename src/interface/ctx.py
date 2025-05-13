@@ -66,17 +66,22 @@ def create_interface():
         outputs="text",
         title="BizBrain Legal Document Q&A",
         description="Enter your name to get started",
-        examples=[["User"]],
-        auth=[(username, password)]  # Set up authentication
+        examples=[["User"]]
     )
     
     return interface
 
 def main():
     """Main entry point for the web interface."""
+    username, password = load_auth_credentials()
     interface = create_interface()
+
     # Launch with share=True to make it accessible beyond localhost
-    interface.launch(share=True)
+    # Use auth parameter in launch method for newer Gradio versions
+    if username and password:
+        interface.launch(share=True, auth=[(username, password)])
+    else:
+        interface.launch(share=True)
 
 if __name__ == "__main__":
     main()
