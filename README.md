@@ -21,6 +21,7 @@ BizBrain processes legal documents into searchable chunks, creates vector embedd
 - Check document status: `python src/main.py --status`
 - Ask question: `python src/main.py --question "your question"`
 - Interactive mode: `python src/main.py --interactive`
+- Web interface: `python src/interface/ctx.py`
 - Setup directories: `python src/utils/dir_setup.py`
 - Install dependencies: `pip install -r requirements.txt`
 
@@ -64,6 +65,7 @@ BizBrain is organized into five distinct layers:
 5. **Interface Layer**
    - Provides API for internal integration
    - Implements simple user interface
+   - Includes web interface using Gradio
    - Collects feedback for improvement
    - Logs interactions for analysis
 
@@ -73,6 +75,7 @@ BizBrain is organized into five distinct layers:
 - LangChain
 - Vector embeddings
 - Large Language Models
+- Gradio (web interface)
 
 
 ## Technical Details
