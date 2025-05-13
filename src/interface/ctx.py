@@ -79,7 +79,10 @@ def main():
     # Launch with share=True to make it accessible beyond localhost
     # Use auth parameter in launch method for newer Gradio versions
     if username and password:
-        interface.launch(share=True, auth=[(username, password)])
+        interface.launch(share=True, 
+        server_name="0.0.0.0", 
+        server_port=7860,
+        auth=[(username, password)])
     else:
         interface.launch(share=True)
 
