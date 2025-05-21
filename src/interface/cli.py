@@ -1,8 +1,16 @@
 import os
 import json
 import re
+import sys
 import numpy as np
+import pathlib
 from datetime import datetime
+
+# Add the project root and src directories to the Python path
+root_dir = pathlib.Path(__file__).parent.parent.parent
+sys.path.insert(0, str(root_dir))
+sys.path.insert(0, str(root_dir / "src"))
+
 from processors.document_loader import DocumentLoader
 from processors.text_chunker import TextChunker
 from indexers.vector_indexer import VectorIndexer
