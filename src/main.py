@@ -23,6 +23,8 @@ def main():
                         help='Ask a question')
     parser.add_argument('--interactive', action='store_true', 
                         help='Start interactive mode')
+    parser.add_argument('--delete-empty-batch', type=str, metavar='BATCH_ID',
+                        help='Delete an empty batch by its ID')
     
     args = parser.parse_args()
     
@@ -31,7 +33,13 @@ def main():
     # Create CLI interface
     bizbrain = BizBrainCLI()
     
-    if args.batch_process:
+    if args.delete_empty_batch:
+        success, message = bizbrain.document_loader.delete_empty_batch(args.delete_empty_batch)
+        if success:
+            print(f"Successfully deleted empty batch {args.delete_empty_batch}")
+        else:
+            print(f"Error: {message}")
+    elif args.batch_process:
         bizbrain.batch_process_documents()
     elif args.status:
         bizbrain.document_status()
@@ -47,7 +55,7 @@ def main():
             else:
                 for source in response['sources']:
                     print(f"- {source}")
-    elif args.interactive or not any([args.batch_process, args.status, args.question]):
+    elif args.interactive or not any([args.batch_process, args.status, args.question, args.delete_empty_batch]):
         bizbrain.interactive_mode()
 
 if __name__ == "__main__":

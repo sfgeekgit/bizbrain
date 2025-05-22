@@ -432,6 +432,7 @@ class BizBrainCLI:
         print("  'exit' - Quit the application")
         print("  'batch' - Process documents in batches with effective dates")
         print("  'status' - See document status")
+        print("  'delete-batch BATCH_ID' - Delete an empty batch")
         print("  Or type your question about documents")
     
     def interactive_mode(self):
@@ -460,6 +461,17 @@ class BizBrainCLI:
                 self.document_status()
             elif user_input.lower() == 'help':
                 self.display_help()
+            elif user_input.lower().startswith('delete-batch '):
+                # Extract batch ID from the command
+                batch_id = user_input[len('delete-batch '):].strip()
+                if not batch_id:
+                    print("Error: Please provide a batch ID (e.g., 'delete-batch batch_001')")
+                else:
+                    success, message = self.document_loader.delete_empty_batch(batch_id)
+                    if success:
+                        print(f"Successfully deleted empty batch {batch_id}")
+                    else:
+                        print(f"Error: {message}")
             elif user_input:
                 response = self.answer_question(user_input)
                 print(f"\nAnswer: {response['answer']}")
