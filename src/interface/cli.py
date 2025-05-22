@@ -6,7 +6,6 @@ import numpy as np
 import pathlib
 from datetime import datetime
 
-# Add the project root and src directories to the Python path
 root_dir = pathlib.Path(__file__).parent.parent.parent
 sys.path.insert(0, str(root_dir))
 sys.path.insert(0, str(root_dir / "src"))

@@ -15,7 +15,6 @@ import pathlib
 # Add the project root to the Python path
 root_dir = pathlib.Path(__file__).parent.parent.parent
 sys.path.insert(0, str(root_dir))
-# Also add the src directory to the path to ensure imports work in both contexts
 sys.path.insert(0, str(root_dir / "src"))
 
 from interface.cli import BizBrainCLI
