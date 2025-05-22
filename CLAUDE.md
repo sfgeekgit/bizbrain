@@ -55,6 +55,7 @@ Be sure to read the README.md file now
 - Code should be easily understandable by humans reading it
 - Line-level code comments should be used in very rare circumstances when particular logic is doing something non-obvious. In almost all cases the code should speak for itself
 - LINE LEVEL CODE COMMENTS SHOULD BE VERY RARE
+- Do not add a single line comment to explain a normal use of code
 - Conversely code should be documented at a reasonably high level such that the design intent can be understood by future engineers. This means creating README files in packages, classes and modules
 
 ### Python Code Style Guidelines
