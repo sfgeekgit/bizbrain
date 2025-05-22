@@ -1,8 +1,15 @@
 import os
 import json
 import re
+import sys
 import numpy as np
+import pathlib
 from datetime import datetime
+
+root_dir = pathlib.Path(__file__).parent.parent.parent
+sys.path.insert(0, str(root_dir))
+sys.path.insert(0, str(root_dir / "src"))
+
 from processors.document_loader import DocumentLoader
 from processors.text_chunker import TextChunker
 from indexers.vector_indexer import VectorIndexer
@@ -328,41 +335,95 @@ class BizBrainCLI:
         
         print("\nBatch processing complete!")
     
-    def document_status(self):
-        """Display the status of all documents in the system."""
+    def get_document_status(self):
+        """
+        Get the status of all documents in the system as structured data.
+        
+        Returns:
+            dict: A dictionary containing document registry information or None if no documents found
+                {
+                    'registry_info': {total_documents, total_chunks, total_batches, last_update},
+                    'batches': [
+                        {batch_id, effective_date, created_at, document_count}
+                    ],
+                    'documents': [
+                        {document_id, status, batch_id, effective_date, chunk_count, filename}
+                    ]
+                }
+        """
         registry_path = os.path.join(self.processed_dir, 'document_registry.json')
         if not os.path.exists(registry_path):
-            print("No documents have been processed yet.")
-            return
+            return None
         
         with open(registry_path, 'r', encoding='utf-8') as f:
             registry = json.load(f)
         
+        # Prepare structured data
+        result = {
+            'registry_info': {
+                'total_documents': registry.get('total_documents', 0),
+                'total_chunks': registry.get('total_chunks', 0),
+                'total_batches': registry.get('total_batches', 0),
+                'last_update': registry.get('last_update', 'N/A')
+            },
+            'batches': [],
+            'documents': []
+        }
+        
+        # Process batches
+        if 'batches' in registry:
+            for batch_id, batch in registry['batches'].items():
+                result['batches'].append({
+                    'batch_id': batch_id,
+                    'effective_date': batch.get('effective_date', 'N/A'),
+                    'created_at': batch.get('created_at', 'N/A'),
+                    'document_count': batch.get('document_count', 0)
+                })
+        
+        # Process documents
+        if 'documents' in registry:
+            for filename, entry in registry['documents'].items():
+                result['documents'].append({
+                    'document_id': entry.get('document_id', 'N/A'),
+                    'status': entry.get('status', 'unknown'),
+                    'batch_id': entry.get('batch_id', 'N/A'),
+                    'effective_date': entry.get('effective_date', 'N/A'),
+                    'chunk_count': entry.get('chunk_count', 0),
+                    'filename': filename
+                })
+        
+        # Sort batches by batch_id
+        result['batches'].sort(key=lambda x: x['batch_id'])
+        
+        # Sort documents by document_id
+        result['documents'].sort(key=lambda x: x['document_id'])
+        
+        return result
+    
+    def document_status(self):
+        """Display the status of all documents in the system to the console."""
+        status_data = self.get_document_status()
+        
+        if not status_data:
+            print("No documents have been processed yet.")
+            return
+        
         # Show batches if any exist
-        if 'batches' in registry and registry['batches']:
-            print(f"\nBatches (Total: {registry.get('total_batches', 0)})\n")
+        if status_data['batches']:
+            print(f"\nBatches (Total: {status_data['registry_info']['total_batches']})\n")
             print(f"{'Batch ID':<12} {'Effective Date':<15} {'Created At':<25} {'Document Count':<15}")
             print("-" * 70)
             
-            for batch_id, batch in registry['batches'].items():
-                effective_date = batch.get('effective_date', 'N/A')
-                created_at = batch.get('created_at', 'N/A')
-                doc_count = batch.get('document_count', 0)
-                
-                print(f"{batch_id:<12} {effective_date:<15} {created_at:<25} {doc_count:<15}")
+            for batch in status_data['batches']:
+                print(f"{batch['batch_id']:<12} {batch['effective_date']:<15} {batch['created_at']:<25} {batch['document_count']:<15}")
         
-        print(f"\nDocument Status (Total: {registry['total_documents']})\n")
+        # Show documents
+        print(f"\nDocument Status (Total: {status_data['registry_info']['total_documents']})\n")
         print(f"{'Document ID':<12} {'Status':<15} {'Batch ID':<12} {'Effective Date':<15} {'Chunks':<8} {'Filename':<30}")
         print("-" * 100)
         
-        for filename, entry in registry['documents'].items():
-            doc_id = entry.get('document_id', 'N/A')
-            status = entry.get('status', 'unknown')
-            batch_id = entry.get('batch_id', 'N/A')
-            effective_date = entry.get('effective_date', 'N/A')
-            chunk_count = entry.get('chunk_count', 0)
-            
-            print(f"{doc_id:<12} {status:<15} {batch_id:<12} {effective_date:<15} {chunk_count:<8} {filename:<30}")
+        for doc in status_data['documents']:
+            print(f"{doc['document_id']:<12} {doc['status']:<15} {doc['batch_id']:<12} {doc['effective_date']:<15} {doc['chunk_count']:<8} {doc['filename']:<30}")
     
     def display_help(self):
         """Display the list of available commands."""
