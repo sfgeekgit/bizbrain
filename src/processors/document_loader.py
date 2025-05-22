@@ -368,21 +368,16 @@ class DocumentLoader:
                 success (bool): True if deletion was successful, False otherwise
                 error_message (str): Error message if deletion failed, None otherwise
         """
-        # Check if batch exists
         if "batches" not in self.registry or batch_id not in self.registry["batches"]:
             return False, f"Batch {batch_id} does not exist"
         
-        # Check if batch is empty
         if self.registry["batches"][batch_id]["document_count"] > 0:
             return False, f"Cannot delete non-empty batch {batch_id}"
         
-        # Delete the batch
         del self.registry["batches"][batch_id]
         
-        # Update total batches count
         self.registry["total_batches"] = len(self.registry["batches"])
         
-        # Save the registry
         self._save_registry()
         
         return True, None

@@ -462,7 +462,6 @@ class BizBrainCLI:
             elif user_input.lower() == 'help':
                 self.display_help()
             elif user_input.lower().startswith('delete-batch '):
-                # Extract batch ID from the command
                 batch_id = user_input[len('delete-batch '):].strip()
                 if not batch_id:
                     print("Error: Please provide a batch ID (e.g., 'delete-batch batch_001')")
