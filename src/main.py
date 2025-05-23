@@ -10,6 +10,7 @@ import sys
 # Add the project root directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 from utils.dir_setup import ensure_directories
+from interface.interface_lib import display_answer_and_sources
 from interface.cli import BizBrainCLI
 
 def main():
@@ -45,16 +46,7 @@ def main():
         bizbrain.document_status()
     elif args.question:
         response = bizbrain.answer_question(args.question)
-        print(f"\nAnswer: {response['answer']}")
-        
-        if response['sources']:
-            print("\nSources:")
-            # Check if sources is a string or a list
-            if isinstance(response['sources'], str):
-                print(f"- {response['sources']}")
-            else:
-                for source in response['sources']:
-                    print(f"- {source}")
+        display_answer_and_sources(response)
     elif args.interactive or not any([args.batch_process, args.status, args.question, args.delete_empty_batch]):
         bizbrain.interactive_mode()
 

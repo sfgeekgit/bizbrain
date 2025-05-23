@@ -5,6 +5,7 @@ import sys
 import numpy as np
 import pathlib
 from datetime import datetime
+from interface.interface_lib import display_answer_and_sources
 
 root_dir = pathlib.Path(__file__).parent.parent.parent
 sys.path.insert(0, str(root_dir))
@@ -473,16 +474,7 @@ class BizBrainCLI:
                         print(f"Error: {message}")
             elif user_input:
                 response = self.answer_question(user_input)
-                print(f"\nAnswer: {response['answer']}")
-                
-                if response['sources']:
-                    print("\nSources:")
-                    # Check if sources is a string or a list
-                    if isinstance(response['sources'], str):
-                        print(f"- {response['sources']}")
-                    else:
-                        for source in response['sources']:
-                            print(f"- {source}")
+                display_answer_and_sources(response)
 
 
 if __name__ == "__main__":
