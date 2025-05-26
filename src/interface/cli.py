@@ -2,7 +2,6 @@ import os
 import json
 import re
 import sys
-import numpy as np
 import pathlib
 from datetime import datetime
 from interface.interface_lib import display_answer_and_sources
@@ -195,24 +194,10 @@ class BizBrainCLI:
             
             # Step 6: Update vector index
             if embeddings:
-                # Convert to numpy array for FAISS
-                embeddings_array = np.array(embeddings).astype('float32')
-                
-                # Add to index
-                ids = np.arange(
-                    self.vector_indexer.next_id, 
-                    self.vector_indexer.next_id + len(embeddings)
-                ).astype('int64')
-                self.vector_indexer.index.add_with_ids(embeddings_array, ids)
-                
-                # Update mapping
-                for i, chunk in enumerate(chunk_data):
-                    self.vector_indexer.id_to_chunk[int(ids[i])] = chunk
-                
-                self.vector_indexer.next_id += len(embeddings)
-                
-                # Save index
-                self.vector_indexer._save_index()
+                # Add embeddings to index using VectorIndexer's bulk method
+                success = self.vector_indexer.add_embeddings_bulk(embeddings, chunk_data)
+                if not success:
+                    raise Exception("Failed to add embeddings to vector index")
             
             # Step 7: Update document registry
             registry = self.document_loader.registry

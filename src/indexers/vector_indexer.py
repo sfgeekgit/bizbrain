@@ -114,6 +114,55 @@ class VectorIndexer:
         
         return len(embeddings)
     
+    def add_embeddings_bulk(self, embeddings, chunk_data):
+        """
+        Add a batch of embeddings and their corresponding chunk data to the index.
+        
+        This method handles all numpy operations for bulk embedding addition,
+        providing proper separation of concerns by keeping vector operations
+        within the VectorIndexer class.
+        
+        Args:
+            embeddings (list): List of embedding vectors
+            chunk_data (list): List of dictionaries containing chunk_id and metadata
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            if not embeddings or not chunk_data:
+                return False
+                
+            if len(embeddings) != len(chunk_data):
+                raise ValueError("Embeddings and chunk_data must have the same length")
+            
+            # Convert to numpy array for FAISS
+            embeddings_array = np.array(embeddings).astype('float32')
+            
+            # Generate IDs for the new embeddings
+            ids = np.arange(
+                self.next_id, 
+                self.next_id + len(embeddings)
+            ).astype('int64')
+            
+            # Add to index
+            self.index.add_with_ids(embeddings_array, ids)
+            
+            # Update mapping
+            for i, chunk in enumerate(chunk_data):
+                self.id_to_chunk[int(ids[i])] = chunk
+            
+            self.next_id += len(embeddings)
+            
+            # Save index
+            self._save_index()
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error adding embeddings to index: {str(e)}")
+            return False
+    
     def search(self, query_text, top_k=5):
         """Search for similar chunks to the query text."""
         # Get query embedding
