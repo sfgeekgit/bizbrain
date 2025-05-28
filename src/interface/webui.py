@@ -140,22 +140,48 @@ def format_chunks(chunks):
     if not chunks:
         return ""
     
-    html = "<h3>Retrieved Chunks</h3>"
+    # Add expand/collapse all button and JavaScript
+    html = """
+    <div style="margin-bottom: 10px;">
+        <button onclick="toggleAllChunks(true)" style="margin-right: 10px;">Expand All</button>
+        <button onclick="toggleAllChunks(false)">Collapse All</button>
+    </div>
+    <script>
+    function toggleAllChunks(expand) {
+        document.querySelectorAll('.chunk-box').forEach(details => {
+            details.open = expand;
+        });
+    }
+    </script>
+    """
+    
     for chunk in chunks:
         # Escape HTML in text to prevent injection
         text = chunk['text'].replace('<', '&lt;').replace('>', '&gt;')
         # Add line breaks for readability
         text = text.replace('\n', '<br>')
         
+        # Get metadata we know exists
+        title = chunk['metadata']['title']
+        section = chunk['metadata'].get('section', 'Unknown')
+        score = f"{chunk['score']:.4f}"
+        
+        # Create chunk box with details/summary
         html += f"""
-        <div class='chunk-box'>
-            <h4>Chunk {chunk['chunk_id']}</h4>
-            <p><strong>Document:</strong> {chunk['metadata']['title']}</p>
-            <p><strong>Section:</strong> {chunk['metadata'].get('section', 'Unknown')}</p>
-            <p><strong>Score:</strong> {chunk['score']:.4f}</p>
-            <p><strong>Text:</strong><br>{text}</p>
-        </div>
+        <details class="chunk-box" style="margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
+            <summary style="cursor: pointer; padding: 5px;">
+                <h4 style="margin: 0; color: #2c3e50;">{title}</h4>
+            </summary>
+            <div style="margin-top: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">
+                <p style="margin: 0 0 10px 0; font-size: 0.9em; color: #666;">
+                    <strong>Section:</strong> {section}<br>
+                    <strong>Score:</strong> {score}
+                </p>
+                <p style="margin: 0; white-space: pre-wrap; font-family: monospace;">{text}</p>
+            </div>
+        </details>
         """
+    
     return html
 
 def main():
