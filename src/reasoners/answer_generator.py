@@ -89,7 +89,11 @@ class AnswerGenerator:
             answer = "I don't have enough information to answer this question."
             sources = []
             self._save_conversation(question, answer, sources, [])
-            return {"answer": answer, "sources": sources}
+            return {
+                "answer": answer, 
+                "sources": sources,
+                "chunks": []  # Include empty chunks list for consistency
+            }
         
         # Format context from retrieved chunks
         context = self._format_context(retrieved_chunks)
@@ -113,7 +117,19 @@ class AnswerGenerator:
             retrieved_chunks
         )
         
-        return parsed_response
+        # Return response with chunks included
+        return {
+            "answer": parsed_response["answer"],
+            "sources": parsed_response["sources"],
+            "chunks": [
+                {
+                    "chunk_id": chunk["chunk_id"],
+                    "text": chunk["text"],
+                    "metadata": chunk["metadata"],
+                    "score": chunk["score"]
+                } for chunk in retrieved_chunks
+            ]
+        }
 
 
 if __name__ == "__main__":

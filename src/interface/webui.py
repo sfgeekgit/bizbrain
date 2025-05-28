@@ -27,6 +27,23 @@ GRADIO_CSS = """
     #settings-toggle {display: none !important;}
     #logo {display: none !important;}
     .svelte-1ipelgc {display: none !important;}
+    .chunk-box {
+        border: 1px solid #ddd;
+        margin: 10px 0;
+        padding: 15px;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+    }
+    .chunk-box h4 {
+        margin-top: 0;
+        color: #333;
+    }
+    .chunk-box p {
+        margin: 5px 0;
+    }
+    .chunk-box strong {
+        color: #555;
+    }
 """
 
 def load_auth_credentials():
@@ -118,6 +135,29 @@ def format_sources(sources):
     html += "</ul>"
     return html
 
+def format_chunks(chunks):
+    """Format chunks as HTML for display in the web UI."""
+    if not chunks:
+        return ""
+    
+    html = "<h3>Retrieved Chunks</h3>"
+    for chunk in chunks:
+        # Escape HTML in text to prevent injection
+        text = chunk['text'].replace('<', '&lt;').replace('>', '&gt;')
+        # Add line breaks for readability
+        text = text.replace('\n', '<br>')
+        
+        html += f"""
+        <div class='chunk-box'>
+            <h4>Chunk {chunk['chunk_id']}</h4>
+            <p><strong>Document:</strong> {chunk['metadata']['title']}</p>
+            <p><strong>Section:</strong> {chunk['metadata'].get('section', 'Unknown')}</p>
+            <p><strong>Score:</strong> {chunk['score']:.4f}</p>
+            <p><strong>Text:</strong><br>{text}</p>
+        </div>
+        """
+    return html
+
 def main():
     # Initialize authentication
     username, password = load_auth_credentials()
@@ -134,14 +174,15 @@ def main():
     
     # Define handler functions for the web interface
     def ask_question(question):
-        """Process a question and return the answer and sources."""
+        """Process a question and return the answer, sources, and chunks."""
         if not question.strip():
-            return "Please enter a question.", ""
+            return "Please enter a question.", "", ""
         
         response = bizbrain.answer_question(question)
         sources_html = format_sources(response.get('sources', []))
+        chunks_html = format_chunks(response.get('chunks', []))
         
-        return response.get('answer', "No answer found."), sources_html
+        return response.get('answer', "No answer found."), sources_html, chunks_html
     
     def get_status():
         """Get and format document status."""
@@ -166,11 +207,12 @@ def main():
                 
                 answer_output = gr.Textbox(label="Answer", lines=5)
                 sources_output = gr.HTML(label="Sources")
+                chunks_output = gr.HTML(label="Retrieved Chunks")
                 
                 question_button.click(
                     ask_question,
                     inputs=question_input,
-                    outputs=[answer_output, sources_output]
+                    outputs=[answer_output, sources_output, chunks_output]
                 )
             
             # Document Status Tab
