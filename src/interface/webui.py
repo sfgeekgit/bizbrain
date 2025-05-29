@@ -140,20 +140,7 @@ def format_chunks(chunks):
     if not chunks:
         return ""
     
-    # Add expand/collapse all button and JavaScript
-    html = """
-    <div style="margin-bottom: 10px;">
-        <button onclick="toggleAllChunks(true)" style="margin-right: 10px;">Expand All</button>
-        <button onclick="toggleAllChunks(false)">Collapse All</button>
-    </div>
-    <script>
-    function toggleAllChunks(expand) {
-        document.querySelectorAll('.chunk-box').forEach(details => {
-            details.open = expand;
-        });
-    }
-    </script>
-    """
+    html = ""
     
     for chunk in chunks:
         # Escape HTML in text to prevent injection
@@ -169,8 +156,8 @@ def format_chunks(chunks):
         # Create chunk box with details/summary
         html += f"""
         <details class="chunk-box" style="margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
-            <summary style="cursor: pointer; padding: 5px;">
-                <h4 style="margin: 0; color: #2c3e50;">{title}</h4>
+            <summary style="cursor: pointer; padding: 5px; display: flex; align-items: center;">
+                <h4 style="margin: 0; color: #2c3e50; display: inline;">{title}</h4>
             </summary>
             <div style="margin-top: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">
                 <p style="margin: 0 0 10px 0; font-size: 0.9em; color: #666;">
